@@ -1,15 +1,16 @@
-//var
-var twoPI = 2*Math.PI;
-var N=64,size=66*66;
-var radius=200/N;
-var dt=0.1, diff=0, visc=0;					//步长、扩散系数、粘度系数
-var force=5, source=100;						//鼠标拖拽产生的力、amount of density that will be deposited
-var dvel=true;								//当前绘制的是速度还是密度视图
+//See Stam03 "Real-Time Fluid Dynamics for Games"
 
+//vars and definations
+var c=document.getElementById("mainCanvas");
+var N=200,size=202*202;
+var radius=200/N;
+var radiusInt = parseInt(radius);
+var dt=0.1, diff=0.0001, visc=0;
+var force=3, source=200;
+var mx,my;
 var u=new Array(66*66), v=new Array(66*66), u_prev=new Array(66*66), v_prev=new Array(66*66);		
 var dens=new Array(66*66), dens_prev=new Array(66*66);	
-	
-//defination
+var f=0;
 function IX(i,j){
 	return i+(N+2)*j;
 }
@@ -21,18 +22,12 @@ function SWAP(x0,x){
 		x[i]=tmp[i];
 	}
 }
-//init
-var c=document.getElementById("mainCanvas");
-var ctx=c.getContext("2d");
-function drawDot(x,y,radius,r,a){
-	ctx.beginPath();
-	ctx.arc(x,y,radius,0,twoPI);
-	ctx.fillStyle = "rgba("+r+","+r+","+r+","+ a +")";
-	ctx.fill();
-	ctx.closePath();
-}
 
-function initDot(){
+//clear data and canvas for first start, or reset them
+function clearCanvas(){
+	ctx.clearRect(0,0,200,200);
+}
+function clearData(){
 	for (var i=0 ; i<size ; i++ ) {
 		u[i] = 0;
 		v[i] = 0;
@@ -40,52 +35,80 @@ function initDot(){
 		dens_prev[i] = 0;
 		u_prev[i] = 0;
 		v_prev[i] = 0;
-	}		
-	console.log("!!!!",dens);
-	u[IX(30,30)]=200;
-	v[IX(30,30)]=200;
-	for(var i=20;i<40;i++){
-		x=(i-0.5)*radius;
-		for(var j=20;j<40;j++){
-			y=(j-0.5)*radius;
-			drawDot(x,y,radius,0,1);
-			dens[IX(i,j)]=100;
-			console.log(i,j,IX(i,j),dens[IX(i,j)]);
+	}	
+}
+function reStart(){
+	clearData();
+	clearCanvas();
+}
+
+//the whole canvas was devided into N*N grid, a "dot" here means a 
+//single cell size radius*radius, where radius = canvasWith / N
+var ctx=c.getContext("2d");
+function drawDot(x,y,color){
+	if(color>255) color=255;
+	if(color<0)   color=0;
+	ctx.fillStyle="rgb("+color+","+color+","+color+")";
+	ctx.fillRect(x,y,radiusInt+1,radiusInt+1);
+}
+//add a 10*10 source rect to the canvas
+function add_source_rect(i,j){
+	if(i<10||i>190||j<10||j>190) return;
+	var x0=(i-9.5)*radius,x=(i+9.5)*radius;
+	var y0=(j-9.5)*radius,y=(j+9.5)*radius;
+	for(var i0=i-9;i0<i+9;i0++)
+		for(var j0=j-9;j0<j+9;j0++)
+			dens[IX(i0,j0)]+=source;
+	for(;x0<x;x0++)
+		for(;y0<y;y0++){
+			drawDot(x,y,parseInt(dens[IX(i,j)]));
 		}
-	}
-	console.log("!!!!",dens);
 }
-initDot();
-function animate(){
-	requestAnimationFrame(animate);
-	vel_step ( u, v, u_prev, v_prev, visc, dt );
-	dens_step ( dens, dens_prev, u, v, diff, dt );
-	draw_density(dens,radius);
+//add source and force
+c.onmousedown = function(e){
+	mx = e.pageX;
+	my = e.pageY;
 }
+c.onmouseup = function(e) {
+	var old_mx = mx;
+	var old_my = my;
+	mx = e.pageX;
+	my = e.pageY;
+	if(mx<1||mx>199||my<1||my>199) return;
+	if(old_mx<1||old_mx>199||old_my<1||old_my>199) return;
+	if((mx == old_mx)&&(my == old_my)) add_source_rect(mx,my);
+	u[IX(old_mx,old_my)] = force*(mx-old_mx);
+	v[IX(old_mx,old_my)] = force*(my-old_my);
+}
+//draw density onto canvas according to dens[] array
 function draw_density(dens,radius){
 	var i,j,x,y;
 	for(i=0;i<N;i++){
 		x=(i-0.5)*radius;
-		for(y=0;y<N;y++){
+		for(j=0;j<N;j++){
 			y=(j-0.5)*radius;
-			
-			d00 = dens[IX(i,j)];
-			d01 = dens[IX(i,j+1)];
-			d10 = dens[IX(i+1,j)];
-			d11 = dens[IX(i+1,j+1)];
-			
-			drawDot(x,y,radius,d00,1);
-			drawDot(x,y+1,radius,d01,1);
-			drawDot(x+1,y,radius,d10,1);
-			drawDot(x+1,y+1,radius,d11,1);
+			drawDot(x,y,parseInt(dens[IX(i,j)]))
 		}
 	}
-	//console.log(dens);
 }
-// setInterval(function(){
-	// animate();
-// },50);
-animate();
+//animate function
+function animate(){
+	requestAnimationFrame(animate);
+	dens_step ( dens, dens_prev, u, v, diff, dt );
+	vel_step ( u, v, u_prev, v_prev, visc, dt );
+	clearCanvas();
+	draw_density(dens,radius);
+}
+
+//simulate start
+function init(){
+	ctx.fillStyle="white";
+	ctx.fillRect(0,0,200,200);
+	clearData();
+	animate();
+}
+init();
+
 //solver
 function add_source (x,s,dt)
 {
@@ -110,7 +133,7 @@ function set_bnd (b, x )
 function lin_solve ( b, x, x0, a, c )
 {
 	var i, j, k;
-	for ( k=0 ; k<5 ; k++ ) {
+	for ( k=0 ; k<25 ; k++ ) {
 		for(i=1;i<=N;i++){
 			for(j=1;j<=N;j++){
 				x[IX(i,j)] = (x0[IX(i,j)] + a*(x[IX(i-1,j)]+x[IX(i+1,j)]+x[IX(i,j-1)]+x[IX(i,j+1)]))/c;
@@ -132,14 +155,11 @@ function advect (b,d,d0,u,v,dt)
 	dt0 = dt*N;
 	for(i=1;i<=N;i++)
 		for(j=1;j<=N;j++){
-			//线性回溯上一时刻的位置(x,y)
 			x = i-dt0*u[IX(i,j)]; y = j-dt0*v[IX(i,j)];		
-			//边界情况，并取到(x,y)的四个邻居
 			if (x<0.5) x=0.5; if (x>N+0.5) x=N+0.5;	
 			i0=parseInt(x); i1=i0+1;
 			if (y<0.5) y=0.5; if (y>N+0.5) y=N+0.5;	
 			j0=parseInt(y); j1=j0+1;										
-			//四个邻居到点(x,y)线性插值，求得点(x,y)的值
 			s1 = x-i0; s0 = 1-s1; t1 = y-j0; t0 = 1-t1;
 			d[IX(i,j)] = s0*(t0*d0[IX(i0,j0)]+t1*d0[IX(i0,j1)])+
 						 s1*(t0*d0[IX(i1,j0)]+t1*d0[IX(i1,j1)]);
@@ -167,23 +187,18 @@ function project ( u,v,p,div )
 	set_bnd ( 1, u ); set_bnd ( 2, v );
 }
 function dens_step ( x, x0, u, v, diff, dt )
-{	console.log(dens[1340],7);
-	add_source ( x, x0, dt );
-	console.log(dens[1340],7);
-	SWAP ( x0, x ); 
-	console.log(dens[0],8);
-	diffuse ( 0, x, x0, diff, dt );
-	console.log(dens[0],9);
+{	
+	//add_source ( x, x0, dt );						
+	SWAP ( x0, x ); diffuse ( 0, x, x0, diff, dt );
 	SWAP ( x0, x ); advect ( 0, x, x0, u, v, dt );
 }
-
 function vel_step ( u, v, u0, v0, visc, dt )
 {
-	add_source ( u, u0, dt ); add_source ( v, v0, dt );console.log(dens[0],1);
-	SWAP ( u0, u ); diffuse ( 1, u, u0, visc, dt );console.log(dens[0],2);
-	SWAP ( v0, v ); diffuse ( 2, v, v0, visc, dt );console.log(dens[0],3);
-	project ( u, v, u0, v0 );console.log(dens[0],4);
+	add_source ( u, u0, dt ); add_source ( v, v0, dt );
+	SWAP ( u0, u ); diffuse ( 1, u, u0, visc, dt );
+	SWAP ( v0, v ); diffuse ( 2, v, v0, visc, dt );
+	project ( u, v, u0, v0 );
 	SWAP ( u0, u ); SWAP ( v0, v );
-	advect ( 1, u, u0, u0, v0, dt ); advect ( 2, v, v0, u0, v0, dt );console.log(dens[0],5);
-	project ( u, v, u0, v0 );console.log(dens[0],6);
+	advect ( 1, u, u0, u0, v0, dt ); advect ( 2, v, v0, u0, v0, dt );
+	project ( u, v, u0, v0 );
 }
