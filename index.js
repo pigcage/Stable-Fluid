@@ -10,7 +10,8 @@ var force=3, source=200;
 var mx,my;
 var u=new Array(66*66), v=new Array(66*66), u_prev=new Array(66*66), v_prev=new Array(66*66);		
 var dens=new Array(66*66), dens_prev=new Array(66*66);	
-var f=0;
+var f=0;						//frame account
+var randomForceIsOn = false;
 function IX(i,j){
 	return i+(N+2)*j;
 }
@@ -37,7 +38,7 @@ function clearData(){
 		v_prev[i] = 0;
 	}	
 }
-function reStart(){
+function reSet(){
 	clearData();
 	clearCanvas();
 }
@@ -94,10 +95,33 @@ function draw_density(dens,radius){
 //animate function
 function animate(){
 	requestAnimationFrame(animate);
+	f++;
 	dens_step ( dens, dens_prev, u, v, diff, dt );
 	vel_step ( u, v, u_prev, v_prev, visc, dt );
 	clearCanvas();
 	draw_density(dens,radius);
+	if(randomForceIsOn)	randomForce();
+}
+//add randomForce for mobile user who is unable to drag
+function randomForce(){
+	if(f%5==0){
+		var rx = parseInt(Math.random()*200);
+		var ry = parseInt(Math.random()*200);
+		if(rx<1||rx>199||ry<1||ry>199) return;
+		u[IX(rx,ry)] =100;
+		v[IX(rx,ry)] =100;
+		ctx.fillStyle = "red";
+		ctx.fillRect(rx,ry,3,3);
+	}
+}
+function randomForceFlag(){
+	randomForceIsOn = !randomForceIsOn;
+	randomForceStatus();
+}
+var rs= document.getElementById("randomForceFlag");
+function randomForceStatus(){
+	if(randomForceIsOn) rs.innerHTML="Random force is on";
+	else rs.innerHTML="Random force is off";
 }
 
 //simulate start

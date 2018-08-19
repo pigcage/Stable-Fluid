@@ -1,14 +1,21 @@
 <html>
 <head>
-<title>stable fluid</title>
+<title>stable fluid [Stam03]</title>
 <style>
 body{margin:0;}
 #mainCanvas{margin:0 0px;border:0px solid #000;}
 </style>
 </head>
 <body>
-<canvas id="mainCanvas" width="200" height="200"></canvas><br>
-<input type="button" value="重置" onclick="reStart()"/>
+<div style="text-align:center;width:200px;">
+<canvas id="mainCanvas" width="200" height="200"></canvas><br><br>
+<input type="button" value="reset" onclick="reSet()"/><br><br>
+<input type="button" value="add or clear random force" onclick="randomForceFlag()"/>
+<p style="color:red;" id="randomForceFlag">Random force is off</p>
+</div>
+<p style="width:400px;">For pc user, click to add source, drag to add force.<br><br>
+For mobile user who is unable to darg, just click "add or clear random force" button to add a force at a random position, click again to disable it. This random force which always points to lower right will be shown as a red point.<br><br>
+Click the "reset" button to reset the stage and data.</p>
 <script src="index.js"></script>
 </body>
 </html>
